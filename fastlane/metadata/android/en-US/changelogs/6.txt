@@ -1,0 +1,1 @@
+Initial F-Droid preparation: encrypted text, screenshot and file sharing; optional alerts; shared deletion; four interface languages.

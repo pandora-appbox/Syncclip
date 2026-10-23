@@ -1,0 +1,33 @@
+Categories:
+  - Connectivity
+License: MIT
+AuthorName: Syncclip contributors
+AuthorEmail: pandora.appbox@proton.me
+SourceCode: https://github.com/pandora-appbox/Syncclip
+IssueTracker: https://github.com/pandora-appbox/Syncclip/issues
+Changelog: https://github.com/pandora-appbox/Syncclip/releases
+
+AutoName: Syncclip
+
+RepoType: git
+Repo: https://github.com/pandora-appbox/Syncclip.git
+Binaries: https://github.com/pandora-appbox/Syncclip/releases/download/v%v/Syncclip-%v.apk
+
+Builds:
+  - versionName: @VERSION@
+    versionCode: @VERCODE@
+    commit: @COMMIT@
+    subdir: android
+    gradle:
+      - yes
+    rm:
+      - android/app/src/androidTest
+    prebuild: test -n "$JAVA17_HOME" && echo "org.gradle.java.home=$JAVA17_HOME" >>
+      gradle.properties
+
+AllowedAPKSigningKeys: aab4ccf9ccc71f938e22c0c2d58a84a977d415a085040d02f6c24718e18cc0bb
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: @VERSION@
+CurrentVersionCode: @VERCODE@

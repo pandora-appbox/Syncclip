@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix="syncclip-package-") as temporary:
         shutil.copytree(root / name, bundle / name, ignore=ignore)
     (bundle / "scripts").mkdir()
     shutil.copy2(root / "scripts/install-linux.sh", bundle / "scripts/install-linux.sh")
-    for name in ["README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "VERSION"]:
+    for name in ["README.md", "PRIVACY.md", "SECURITY.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "VERSION"]:
         shutil.copy2(root / name, bundle / name)
     shutil.copytree(wheels, bundle / "wheels")
     hashes = "".join(

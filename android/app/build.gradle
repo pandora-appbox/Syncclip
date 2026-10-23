@@ -3,6 +3,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'dev.syncclip'
     compileSdk 36
+    buildToolsVersion '36.0.0'
     defaultConfig {
         applicationId 'dev.syncclip'
         minSdk 26
@@ -24,7 +25,10 @@ android {
     }
     sourceSets { main { assets.srcDirs += ['../../linux/syncclip/locales', '../../licenses'] } }
     buildTypes {
-        release { minifyEnabled false; signingConfig signingConfigs.release }
+        release {
+            minifyEnabled false
+            if (System.getenv('SYNCCLIP_KEYSTORE')) signingConfig signingConfigs.release
+        }
         debug { if (System.getenv('SYNCCLIP_KEYSTORE')) signingConfig signingConfigs.release }
     }
 }

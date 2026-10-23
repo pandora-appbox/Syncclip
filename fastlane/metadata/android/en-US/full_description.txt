@@ -1,0 +1,12 @@
+Share text, screenshots and files between Linux and Android using a server you control.
+
+• Native Android app and Linux tray app.
+• Screenshots copied on Linux sync automatically.
+• Send from Android using Share, the system file picker or Send clipboard.
+• Recent history, individual deletion and shared history clearing.
+• Optional receipt alerts and English, French, Spanish and Russian interfaces.
+• Content and filenames are encrypted on the sending device.
+
+Requires your own reachable HTTPS server running the open-source Syncclip relay, plus a paired Linux or Android device. Docker Compose setup supports home servers and rented servers. There is no hosted account or default service.
+
+Android sending requires an explicit action; ordinary background clipboard reading is restricted by Android. Receiving uses a foreground service with a visible connection notification. Battery restrictions can delay delivery. Every paired device can read the group's clips, so keep pairing links private. Automatic sharing on Linux can include copied passwords; pause it when needed.

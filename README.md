@@ -40,6 +40,8 @@ Open **Syncclip** from your app menu. It stays in the tray and starts at login.
 
 **Keep in mind:** automatic Linux clipboard capture is verified on X11; Wayland support depends on your desktop. Android requires an explicit Share/Send action to read its clipboard. Battery restrictions can delay delivery while the phone sleeps. **Everything copied on Linux—including passwords—can sync while automatic sharing is on.** Pause it when needed. Your pairing link gives access to the whole device group: keep it private.
 
+[Privacy policy](PRIVACY.md) · [Report a security issue](SECURITY.md)
+
 ## Screenshot
 
 <img src="docs/screenshots/linux.png" width="520" alt="Syncclip Linux with a synthetic screenshot preview and full-width history">
@@ -94,10 +96,12 @@ Android receives through a foreground service and does not use accessibility, ro
 <details>
 <summary><strong>Build, verification & licenses</strong></summary>
 
+For F-Droid listing and reproducible APK builds, see [the preparation guide](docs/FDROID.md).
+
 Syncclip's own code is **MIT licensed**. See [LICENSE](LICENSE) and [dependency licenses and original notices](THIRD_PARTY_NOTICES.md). Third-party licenses remain in force.
 
 Android builds require JDK 17 and Android SDK 36; the wrapper pins Gradle 8.14.6. Build a signed release with `python3 scripts/build-release.py`. Keep `private/android-release.keystore` and its password backed up privately; never commit them. Debug CI artifacts are for development and are not the downloadable release APK.
 
-The Docker build uses Go 1.27.3. See [verification evidence](VERIFICATION.md), [advanced build/test instructions](docs/ADVANCED.md#verification), and [Linux packaging](scripts/build-linux-release.py). Runtime dependencies are pinned and CI checks known advisories. The Docker deployment has separate security verification recorded with the release.
+The Docker build uses Go 1.27.3. See [verification evidence](VERIFICATION.md), [advanced build/test instructions](docs/ADVANCED.md#verification), and [Linux packaging](scripts/build-linux-release.py). Runtime dependencies are pinned. The optional manual workflow checks known advisories; GitHub Actions is disabled to avoid consuming build minutes. The Docker deployment has separate security verification recorded with the release.
 
 </details>

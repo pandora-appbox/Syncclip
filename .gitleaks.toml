@@ -1,0 +1,9 @@
+title = "Syncclip secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public Android signing certificate SHA-256; not the private key"
+targetRules = ["generic-api-key"]
+regexes = ['''^aab4ccf9ccc71f938e22c0c2d58a84a977d415a085040d02f6c24718e18cc0bb$''']

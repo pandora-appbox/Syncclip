@@ -1,0 +1,7 @@
+Partagez du texte, des captures d’écran et des fichiers entre Linux et Android via votre propre serveur.
+
+Application Android native, application Linux en zone de notification, historique récent, suppression individuelle ou partagée et alertes facultatives. Le contenu et les noms de fichiers sont chiffrés avant l’envoi.
+
+Un serveur HTTPS accessible exécutant le relais libre Syncclip est nécessaire. Docker Compose permet une installation sur un serveur domestique ou loué. Aucun compte ni service hébergé n’est fourni.
+
+Sur Android, utilisez Partager, le sélecteur de fichiers ou l’envoi explicite du presse-papiers. La réception utilise un service visible ; les restrictions de batterie peuvent retarder les transferts. Gardez le lien d’association secret : chaque appareil associé peut lire les éléments du groupe. Le partage automatique sous Linux peut inclure des mots de passe copiés.
