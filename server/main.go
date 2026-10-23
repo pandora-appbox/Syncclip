@@ -3,8 +3,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -57,8 +55,9 @@ type Message struct {
 	Error   string   `json:"error,omitempty"`
 }
 type peer struct {
-	conn *websocket.Conn
-	send chan Message
+	conn     *websocket.Conn
+	send     chan Message
+	deviceID string
 }
 type Relay struct {
 	mu        sync.Mutex
@@ -66,6 +65,7 @@ type Relay struct {
 	path      string
 	tokenHash []byte
 	peers     map[*peer]bool
+	accounts  Accounts
 }
 
 func newRelay(path, tokenHash string) (*Relay, error) {
@@ -80,6 +80,9 @@ func newRelay(path, tokenHash string) (*Relay, error) {
 			return nil, errors.New("invalid relay state; restore a valid backup")
 		}
 	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	if err := r.loadAccounts(); err != nil {
 		return nil, err
 	}
 	r.prune(time.Now())
@@ -180,6 +183,9 @@ func (r *Relay) enqueue(p *peer, m Message) {
 func (r *Relay) publish(p *peer, c *Clip, epoch int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if !r.peerActiveLocked(p) {
+		return
+	}
 	if epoch != r.state.Epoch {
 		r.enqueue(p, r.snapshot())
 		return
@@ -234,12 +240,13 @@ func (r *Relay) socket(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Native clients only", http.StatusForbidden)
 		return
 	}
-	hash := sha256.Sum256([]byte(req.Header.Get("Authorization")))
-	if subtle.ConstantTimeCompare(hash[:], r.tokenHash) != 1 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	r.mu.Lock()
+	device := r.authorizeLocked(req)
+	if device == nil {
+		r.mu.Unlock()
+		http.Error(w, "Unauthorized", 401)
 		return
 	}
-	r.mu.Lock()
 	if len(r.peers) >= 16 {
 		r.mu.Unlock()
 		http.Error(w, "Too many devices", http.StatusServiceUnavailable)
@@ -250,13 +257,23 @@ func (r *Relay) socket(w http.ResponseWriter, req *http.Request) {
 		r.mu.Unlock()
 		return
 	}
-	p := &peer{conn: conn, send: make(chan Message, 128)}
+	p := &peer{conn: conn, send: make(chan Message, 128), deviceID: device.ID}
+	device.LastSeen = time.Now().UnixMilli()
 	r.prune(time.Now())
 	r.peers[p] = true
 	r.enqueue(p, r.snapshot())
 	r.mu.Unlock()
 	done := make(chan struct{})
-	defer func() { r.mu.Lock(); delete(r.peers, p); r.mu.Unlock(); close(done); conn.Close() }()
+	defer func() {
+		r.mu.Lock()
+		delete(r.peers, p)
+		if d := r.accounts.Devices[p.deviceID]; d != nil {
+			d.LastSeen = time.Now().UnixMilli()
+		}
+		r.mu.Unlock()
+		close(done)
+		conn.Close()
+	}()
 	go func() {
 		tick := time.NewTicker(25 * time.Second)
 		defer tick.Stop()
@@ -318,6 +335,10 @@ func (r *Relay) handler() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+	mux.HandleFunc("POST /v1/enroll", r.enroll)
+	mux.HandleFunc("GET /v1/devices", r.listDevices)
+	mux.HandleFunc("DELETE /v1/devices/{id}", r.revokeDevice)
+	mux.HandleFunc("POST /v1/invitations", r.createInvitation)
 	mux.HandleFunc("GET /v1/ws", r.socket)
 	mux.HandleFunc("PUT /v1/blobs/{id}", r.blobUpload)
 	mux.HandleFunc("GET /v1/blobs/{id}", r.blobDownload)

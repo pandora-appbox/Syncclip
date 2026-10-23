@@ -157,12 +157,11 @@ public final class ImageTransfer {
   }
 
   public void upload(JSONObject clip) throws Exception {
-    ClipCrypto crypto = new ClipCrypto(store.key());
     byte[] encrypted = Files.readAllBytes(path(clip.getString("id")).toPath());
     Request request =
         new Request.Builder()
             .url(store.url() + "/v1/blobs/" + clip.getString("id"))
-            .header("Authorization", crypto.authorization)
+            .header("Authorization", store.authorization())
             .header("X-Syncclip-Epoch", Long.toString(store.epoch()))
             .put(RequestBody.create(encrypted, MediaType.get("application/octet-stream")))
             .build();
@@ -181,7 +180,7 @@ public final class ImageTransfer {
       Request request =
           new Request.Builder()
               .url(store.url() + "/v1/blobs/" + clip.getString("id"))
-              .header("Authorization", crypto.authorization)
+              .header("Authorization", store.authorization())
               .build();
       try (Response response = http.newCall(request).execute()) {
         if (!response.isSuccessful() || response.body() == null)

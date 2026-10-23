@@ -13,11 +13,12 @@ from urllib.request import Request, urlopen
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux"))
+from live_config import load_config, authorization
 from syncclip.core import Crypto
 import websockets
 
 root = Path(__file__).resolve().parents[1]
-config = json.loads((root / "private/pairing.json").read_text())
+config = load_config()
 base = config["url"]
 parsed = urlparse(base)
 crypto = Crypto(config["key"])
@@ -26,7 +27,7 @@ crypto = Crypto(config["key"])
 def request(path, method="GET", data=None, authorized=False, headers=None):
     supplied = dict(headers or {})
     if authorized:
-        supplied["Authorization"] = crypto.authorization
+        supplied["Authorization"] = authorization(config)
     req = Request(base + path, method=method, data=data, headers=supplied)
     try:
         with urlopen(req, timeout=60) as response:
@@ -88,7 +89,7 @@ async def main():
     ids = []
     async with websockets.connect(
         base.replace("https://", "wss://", 1) + "/v1/ws",
-        extra_headers={"Authorization": crypto.authorization},
+        extra_headers={"Authorization": authorization(config)},
         max_size=32 * 1024 * 1024,
         open_timeout=15,
     ) as ws:

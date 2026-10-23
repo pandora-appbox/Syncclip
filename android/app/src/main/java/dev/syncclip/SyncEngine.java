@@ -89,7 +89,7 @@ public final class SyncEngine {
   }
 
   public void start() {
-    if (running || !store.paired() || !store.enabled()) return;
+    if (running || !store.paired() || !store.hasDeviceToken() || !store.enabled()) return;
     try {
       crypto = new ClipCrypto(store.key());
     } catch (Exception e) {
@@ -115,7 +115,12 @@ public final class SyncEngine {
       socket = null;
     }
     crypto = null;
-    status(store.paired() ? "Paused" : "Not paired");
+    status(
+        store.paired()
+            ? (store.hasDeviceToken()
+                ? "Paused"
+                : "Device disconnected. Pair again with a new invitation.")
+            : "Not paired");
   }
 
   private void connect() {
@@ -124,10 +129,28 @@ public final class SyncEngine {
     uploading.clear();
     uploaded.clear();
     status("Connecting…");
+    images.workers.execute(
+        () -> {
+          try {
+            ((SyncApp) context.getApplicationContext()).devices.ensure();
+            String authorization = store.authorization();
+            main.post(
+                () -> {
+                  if (current == generation && running) openSocket(current, authorization);
+                });
+          } catch (DeviceClient.Revoked error) {
+            main.post(() -> disconnected(current, true));
+          } catch (Exception error) {
+            main.post(() -> disconnected(current, false));
+          }
+        });
+  }
+
+  private void openSocket(int current, String authorization) {
     Request request =
         new Request.Builder()
             .url(store.url().replaceFirst("^https://", "wss://") + "/v1/ws")
-            .header("Authorization", crypto.authorization)
+            .header("Authorization", authorization)
             .build();
     socket =
         client.newWebSocket(
@@ -149,6 +172,7 @@ public final class SyncEngine {
               @Override
               public void onClosing(WebSocket ws, int code, String reason) {
                 ws.close(code, reason);
+                if (code == 4003) main.post(() -> disconnected(current, true));
               }
 
               @Override
@@ -162,6 +186,13 @@ public final class SyncEngine {
     if (current != generation || !running) return;
     connected = false;
     socket = null;
+    if (denied) {
+      stop();
+      store.revoked();
+      context.stopService(new Intent(context, SyncService.class));
+      status("Device disconnected. Pair again with a new invitation.");
+      return;
+    }
     status(
         denied
             ? "Pairing rejected. Please pair again."
@@ -176,7 +207,8 @@ public final class SyncEngine {
   }
 
   public void send(String text) throws Exception {
-    if (!store.paired()) throw new IllegalStateException("Connect your devices first");
+    if (!store.paired() || !store.hasDeviceToken())
+      throw new IllegalStateException("Pair again using a new invitation");
     if (text.trim().startsWith("syncclip://pair?"))
       throw new IllegalArgumentException("Pairing links are private and are never synced");
     if (crypto == null) crypto = new ClipCrypto(store.key());
@@ -187,8 +219,8 @@ public final class SyncEngine {
   }
 
   public void sendImage(Uri uri) {
-    if (!store.paired()) {
-      status("Connect your devices first");
+    if (!store.paired() || !store.hasDeviceToken()) {
+      status("Pair again using a new invitation");
       return;
     }
     final String key, url = store.url();

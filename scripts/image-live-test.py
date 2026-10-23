@@ -20,13 +20,14 @@ import websockets
 
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "linux"))
+from live_config import load_config
 from syncclip.core import Store, SyncClient
 
 
 async def main():
     serial = sys.argv[1]
     adb = ["/home/hal/Android/Sdk/platform-tools/adb", "-s", serial]
-    config = json.loads((root / "private/pairing.json").read_text())
+    config = load_config()
     actual_config = Path.home() / ".config/syncclip/config.json"
     was_auto = json.loads(actual_config.read_text()).get("auto", True)
     clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
@@ -46,7 +47,7 @@ async def main():
         url = config["url"].replace("https://", "wss://") + "/v1/ws"
         async with websockets.connect(
             url,
-            extra_headers={"Authorization": peer.crypto.authorization},
+            extra_headers={"Authorization": peer.authorization},
             max_size=32 * 1024 * 1024,
         ) as ws:
             hello = json.loads(await ws.recv())

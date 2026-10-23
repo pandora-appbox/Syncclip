@@ -19,6 +19,7 @@
         <!-- Private commands require Android to authorize entry through this alias. -->
         <activity-alias android:name=".ClipboardActions" android:targetActivity=".MainActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".SupportActivity" android:exported="false" />
         <service android:name=".SyncService" android:exported="false" android:foregroundServiceType="connectedDevice" />
         <provider android:name=".ImageProvider" android:authorities="${applicationId}.images" android:exported="false" android:grantUriPermissions="true" />
         <service android:name=".ClipboardTile" android:exported="true" android:icon="@drawable/ic_stat_syncclip" android:label="Send clipboard" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">

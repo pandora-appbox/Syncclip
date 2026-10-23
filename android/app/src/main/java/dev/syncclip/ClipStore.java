@@ -154,11 +154,17 @@ public final class ClipStore {
         || server.getFragment() != null)
       throw new IllegalArgumentException("The server must be an HTTPS address");
     new ClipCrypto(key);
-    return new String[] {url.replaceAll("/+$", ""), key};
+    String invite = uri.getQueryParameter("invite");
+    if (invite != null && !invite.matches("[a-f0-9]{64}"))
+      throw new IllegalArgumentException("Invalid pairing invitation");
+    return new String[] {url.replaceAll("/+$", ""), key, invite == null ? "" : invite};
   }
 
   public synchronized void pair(String link) throws Exception {
     String[] fields = parsePairing(link);
+    if (fields[2].isEmpty())
+      throw new IllegalArgumentException("Pair again using a new invitation");
+    boolean same = paired() && fields[0].equals(url()) && fields[1].equals(key());
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
     cipher.init(Cipher.ENCRYPT_MODE, wrappingKey());
     String wrapped =
@@ -171,14 +177,105 @@ public final class ClipStore {
         .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
         .putBoolean("enabled", true)
         .commit()) throw new IllegalStateException("Could not save pairing");
-    state = new JSONObject();
-    save();
+    if (!same) {
+      state = new JSONObject();
+      save();
+    }
+    if (!same || !hasDeviceToken()) {
+      byte[] token = new byte[32];
+      new java.security.SecureRandom().nextBytes(token);
+      StringBuilder hex = new StringBuilder();
+      for (byte b : token) hex.append(String.format("%02x", b & 255));
+      prefs
+          .edit()
+          .putString("device_id", java.util.UUID.randomUUID().toString())
+          .putBoolean("device_enrolled", false)
+          .commit();
+      protect("device_token", hex.toString());
+      protect("device_invite", fields[2]);
+      prefs.edit().putBoolean("device_revoked", false).commit();
+    }
   }
 
   public synchronized void unpair() {
-    prefs.edit().remove("url").remove("wrapped_key").remove("iv").remove("enabled").commit();
+    prefs
+        .edit()
+        .remove("url")
+        .remove("wrapped_key")
+        .remove("iv")
+        .remove("enabled")
+        .remove("device_revoked")
+        .remove("device_id")
+        .remove("device_enrolled")
+        .remove("device_token")
+        .remove("device_token_iv")
+        .remove("device_invite")
+        .remove("device_invite_iv")
+        .commit();
     state = new JSONObject();
     file.delete();
+  }
+
+  private void protect(String name, String value) throws Exception {
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.ENCRYPT_MODE, wrappingKey());
+    if (!prefs
+        .edit()
+        .putString(
+            name,
+            Base64.encodeToString(
+                cipher.doFinal(value.getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP))
+        .putString(name + "_iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
+        .commit()) throw new IllegalStateException("Could not save device credential");
+  }
+
+  private String secret(String name) throws Exception {
+    if (!prefs.contains(name)) return "";
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE,
+        wrappingKey(),
+        new GCMParameterSpec(
+            128, Base64.decode(prefs.getString(name + "_iv", ""), Base64.NO_WRAP)));
+    return new String(
+        cipher.doFinal(Base64.decode(prefs.getString(name, ""), Base64.NO_WRAP)),
+        StandardCharsets.UTF_8);
+  }
+
+  public boolean hasDeviceToken() {
+    return prefs.contains("device_token") && !prefs.getBoolean("device_revoked", false);
+  }
+
+  public void revoked() {
+    prefs.edit().putBoolean("device_revoked", true).putBoolean("enabled", false).commit();
+  }
+
+  public String deviceId() {
+    return prefs.getString("device_id", "");
+  }
+
+  public String authorization() throws Exception {
+    String token = secret("device_token");
+    if (token.isEmpty()) throw new IllegalStateException("Pair again using a new invitation");
+    return "Bearer " + token;
+  }
+
+  public String invitation() throws Exception {
+    return secret("device_invite");
+  }
+
+  public boolean enrolled() {
+    return prefs.getBoolean("device_enrolled", false);
+  }
+
+  public synchronized void enrolled(String id) throws Exception {
+    if (!id.equals(deviceId())) throw new IllegalStateException("Pairing changed");
+    if (!prefs
+        .edit()
+        .putBoolean("device_enrolled", true)
+        .remove("device_invite")
+        .remove("device_invite_iv")
+        .commit()) throw new IllegalStateException("Could not save enrollment");
   }
 
   private void save() throws Exception {

@@ -29,7 +29,7 @@ Build and sign the upstream release from a clean Git checkout of the final relea
 Install `apksigcopier==1.1.1` in a temporary Python environment, then run from that environment:
 
 ```sh
-python scripts/check-reproducible-apk.py artifacts/Syncclip-0.4.2.apk
+python scripts/check-reproducible-apk.py artifacts/Syncclip-0.5.0.apk
 ```
 
 Use `--gradle /path/to/gradle-8.14.6/bin/gradle` to use an existing trusted Gradle installation, and `--sdk /path/to/Android/Sdk` if necessary. The command creates a clean Git checkout at `--ref` (default HEAD), excludes signing variables, compiles without the build cache, copies only the public APK signature, compares the complete files byte-for-byte and verifies the known signing certificate. The private signing key is not copied or used for the rebuild. Results and logs go under `artifacts/reproducibility/` and remain outside Git.
@@ -42,7 +42,7 @@ aab4ccf9ccc71f938e22c0c2d58a84a977d415a085040d02f6c24718e18cc0bb
 
 ## Publication remains a separate step
 
-Both source repositories and downloads must remain private until the maintainer approves publication. Preparing or linting the recipe does not submit the app. Once approved, make the GitHub source and release APK anonymously accessible, verify the links without credentials, then open a request or merge request through F-Droid's submission process using the prepared recipe. F-Droid never needs the private pairing bundle or signing keystore.
+The maintainer has published the GitHub repository. Preparing or linting the recipe does not submit the app. Verify the source and release APK links without credentials before opening a request or merge request through F-Droid’s submission process using the prepared recipe. F-Droid never needs the private pairing bundle or signing keystore.
 
 For the submission description: Syncclip is an original native clipboard/file-sharing app for Linux and Android, using a fully open-source self-hosted relay. It has no default hosted service, advertising, analytics, proprietary SDKs or API-key requirement. It is already used on the maintainer's Linux desktop and Android device; provide that fact when discussing the inclusion policy's age/user exception, without claiming a larger user base.
 

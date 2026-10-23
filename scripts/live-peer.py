@@ -8,17 +8,17 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux"))
+from live_config import load_config, authorization
 from syncclip.core import Crypto
 import websockets
 
 
 async def main():
-    root = Path(__file__).resolve().parents[1]
-    config = json.loads((root / "private/pairing.json").read_text())
+    config = load_config()
     crypto = Crypto(config["key"])
     async with websockets.connect(
         config["url"].replace("https://", "wss://") + "/v1/ws",
-        extra_headers={"Authorization": crypto.authorization},
+        extra_headers={"Authorization": authorization(config)},
         max_size=32 * 1024 * 1024,
     ) as ws:
         await ws.recv()

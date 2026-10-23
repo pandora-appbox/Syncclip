@@ -1,0 +1,1 @@
+Device list with online status and remote disconnection. One-use pairing invitations, working Linux pairing QR codes and clearer fallback instructions. Quick settings shortcut moved into Settings; optional donation page with PayPal and cryptocurrency addresses.

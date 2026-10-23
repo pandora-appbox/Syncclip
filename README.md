@@ -8,33 +8,35 @@ Share **text, screenshots and files between Linux and Android** through a server
 
 ### Android
 
-[Download the APK](https://github.com/pandora-appbox/Syncclip/releases/download/v0.4.2/Syncclip-0.4.2.apk), open it, and allow installation when prompted. Requires Android 8 or newer. To update, install over the existing app.
+[Download the APK](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.0/Syncclip-0.5.0.apk), open it, and allow installation when prompted. Requires Android 8 or newer. To update, install over the existing app.
 
 ### Linux
 
-**Ubuntu 24.04 / Mint 22 (x86-64):** [download the Debian package](https://github.com/pandora-appbox/Syncclip/releases/download/v0.4.2/syncclip_0.4.2_amd64.deb), then run in your Downloads folder:
+**Ubuntu 24.04 / Mint 22 (x86-64):** [download the Debian package](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.0/syncclip_0.5.0_amd64.deb), then run in your Downloads folder:
 
 ```sh
-sudo apt install ./syncclip_0.4.2_amd64.deb
+sudo apt install ./syncclip_0.5.0_amd64.deb
 ```
 
 Open **Syncclip** from your app menu. It stays in the tray and starts at login.
 
-**Other Linux desktops:** [download the installer archive](https://github.com/pandora-appbox/Syncclip/releases/download/v0.4.2/Syncclip-0.4.2-linux.tar.gz). See the expandable Linux instructions below for prerequisites and installation.
+**Other Linux desktops:** [download the installer archive](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.0/Syncclip-0.5.0-linux.tar.gz). See the expandable Linux instructions below for prerequisites and installation.
 
-[All downloads](https://github.com/pandora-appbox/Syncclip/releases/tag/v0.4.2) · [Gitea mirror](https://gitea.pandoraappbox.com/hal/Syncclip/releases) — private for now; sign in to download.
+[All downloads](https://github.com/pandora-appbox/Syncclip/releases/tag/v0.5.0) · [Gitea mirror](https://gitea.pandoraappbox.com/hal/Syncclip/releases).
 
 ## Connect your devices
 
 1. **Start your server.** Follow the [Docker setup guide](docs/HOSTING.md). A home server or rented server works; both devices need to reach it over HTTPS.
-2. **Pair Linux and Android.** Import the generated pairing link on both devices, or scan Linux's pairing QR code with Android.
+2. **Pair Linux and Android.** Import the server’s initial pairing link on the first device. On that device, open **Settings → Pair another device**, then scan the QR code with Android or copy the new link. Each invitation works once and expires after 10 minutes.
 3. **Copy and share.** Text and screenshots copied on Linux sync automatically. On Android, use **Share → Syncclip** or **Send clipboard**. Per-clip notifications can be turned off in Settings.
 
 ## What you get
 
 - Text, PNG/JPEG/WebP screenshots and other files up to **32 MiB** each.
 - Recent history, individual deletion and **clear history now** across paired devices.
+- Device list with online status and remote disconnection.
 - Settings at the top, pause controls, optional receipt alerts, and English/French/Spanish/Russian.
+- Quick settings shortcut and an optional donation page in Settings.
 - Encrypted local history and offline retry when a device reconnects.
 - A small Docker relay that stores encrypted data; no database is required.
 
@@ -85,7 +87,7 @@ Use `--public` only if ports 80/443 are available for the included Caddy HTTPS p
 <details>
 <summary><strong>Privacy, retention & platform limits</strong></summary>
 
-AES-256-GCM encrypts text, attachment bytes and filenames on the sending device. The relay receives ciphertext and separate authentication information. All paired devices share one trusted group; there are no individual accounts or per-device revocation. Rotate the group key and re-pair remaining devices if a device is lost. Encryption does not hide traffic sizes or timing, and any paired device can read the group's clips.
+AES-256-GCM encrypts text, attachment bytes and filenames on the sending device. The relay receives ciphertext and separate authentication information. All paired devices share one trusted group; each device has its own revocable server credential. Use **Settings → Connected devices → Disconnect** to block a device’s future access. Saved copies remain; rotate the group encryption key if it may be compromised. Encryption does not hide traffic sizes or timing, and any paired device can read the group's clips.
 
 History keeps up to 50 clips for 24 hours. Text is limited to 64 KiB; supported images to 8 MiB / 24 megapixels; general files to 32 MiB. Up to 20 encrypted clips queue offline. Shared deletion removes retained data when devices reconnect; saved copies outside Syncclip stay intact. The system clipboard follows the operating system's lifetime, separately from history retention. Folders must be archived before sharing.
 

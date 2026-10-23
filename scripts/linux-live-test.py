@@ -15,13 +15,14 @@ root = Path(__file__).resolve().parents[1]
 temporary = tempfile.TemporaryDirectory(prefix="syncclip-gtk-test-")
 os.environ["XDG_CONFIG_HOME"] = temporary.name
 sys.path.insert(0, str(root / "linux"))
+from live_config import load_config, authorization
 from syncclip.core import Crypto, atomic_json
 from syncclip.app import App
 from gi.repository import Gdk, GLib, Gtk
 import websockets
 
 config = dict(
-    json.loads((root / "private/pairing.json").read_text()),
+    load_config(),
     device="Linux desktop test",
     auto=True,
 )
@@ -40,7 +41,7 @@ async def peer():
     try:
         async with websockets.connect(
             config["url"].replace("https://", "wss://") + "/v1/ws",
-            extra_headers={"Authorization": crypto.authorization},
+            extra_headers={"Authorization": authorization(config)},
             max_size=32 * 1024 * 1024,
         ) as ws:
             await ws.recv()

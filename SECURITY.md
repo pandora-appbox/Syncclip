@@ -12,7 +12,7 @@ Security fixes target the latest published stable release. Update all paired cli
 
 ## Security boundaries
 
-Syncclip is a single trusted device group. Its pairing secret grants access to every clip in that group; there is no individual device revocation. Rotate the group secret and re-pair remaining devices after a loss or suspected compromise. Keep Android release signing keys and server provisioning files outside source control.
+Syncclip is a single trusted device group. All devices share a content-encryption secret, but each authenticates to the relay using a separate random credential. Disconnecting a device revokes that credential, closes its active sockets, and invalidates all outstanding pairing invitations. The initial server invitation is consumed by the first enrollment and is never reopened by removing devices. Later invitations are single-use and expire in ten minutes. A disconnected device cannot enroll again without a new invitation. Saved content and encryption keys already held by that device cannot be remotely erased; rotate the group encryption secret and re-pair remaining devices if the secret itself may be compromised. Keep Android release signing keys and server provisioning files outside source control.
 
 Content is encrypted before leaving the sender and sent through certificate-verified HTTPS. Encryption does not protect against a compromised paired device or malicious host administrator, hide traffic metadata, or erase external saved copies/backups. Automatic Linux clipboard sharing includes copied secrets while enabled. See the [privacy policy](PRIVACY.md) and [server guide](docs/HOSTING.md) for data handling and deployment requirements.
 

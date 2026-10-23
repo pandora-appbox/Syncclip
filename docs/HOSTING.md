@@ -12,7 +12,7 @@ At home, point an A record to your public IPv4 and forward TCP 80/443 from the r
 
 ## Install with automatic HTTPS
 
-Download and extract `Syncclip-0.4.2-server.tar.gz` from a private release, or clone the repository. From that directory:
+Download and extract `Syncclip-0.5.0-server.tar.gz` from [the latest release](https://github.com/pandora-appbox/Syncclip/releases/latest), or clone the repository. From that directory:
 
 ```sh
 ./scripts/setup-server.sh https://sync.example.com/syncclip --public
@@ -20,7 +20,7 @@ Download and extract `Syncclip-0.4.2-server.tar.gz` from a private release, or c
 
 The script validates the URL and creates private pairing credentials. The release server archive includes ready Linux x86-64 images and loads them automatically; no Go build is needed. A source checkout or another architecture builds the pinned relay and patched Caddy images instead (the first build can take several minutes). It then starts the services with HTTPS. Certificate issuance needs public DNS/port reachability. It does not install Docker, change your firewall, or overwrite an existing conflicting configuration.
 
-Pair clients using `private/pairing-link.txt`. Linux can display this pairing link as a QR code for Android. Keep the entire `private/` directory secret and backed up. Do not paste pairing links into public issues or CI.
+Pair the **first** client using `private/pairing-link.txt`. That initial invitation works once. On a paired client, use **Settings → Pair another device** for each additional device: generated invitations work once and expire after ten minutes. Linux displays a QR code; Android can copy the link. Keep the entire `private/` directory secret and backed up. Do not paste pairing links into public issues or CI.
 
 ## If you already have nginx or another HTTPS proxy
 
@@ -62,4 +62,4 @@ docker compose start relay
 
 Restore data while the relay is stopped, preserving UID 10001 and private directory/file permissions, then start it. Never run two relays against the same writable state directory. An old backup may contain deleted ciphertext, so retain and delete backups according to your own policy.
 
-To revoke a lost device, create a fresh pairing group in a separate directory, replace the relay authentication hash and pair all remaining devices again. Disconnect alone only removes keys on that particular device.
+Use **Settings → Connected devices → Disconnect** on a trusted client to revoke a device. This also invalidates pending invitations; create new ones if needed. Back up `devices.json` with the relay state: it records credentials and whether the initial invitation has been consumed. If every device is disconnected, the administrator must reset server pairing (stop the relay, preserve a private backup, generate a new initial invitation/auth hash, and reset the device registry) before enrolling again. Do not reset the registry during ordinary upgrades. Revocation cannot erase saved copies; rotate the content-encryption key and re-pair if that key may be compromised.

@@ -12,9 +12,11 @@ from pathlib import Path
 import random
 import re
 import threading
+import tempfile
 import time
 from urllib.parse import parse_qs, urlencode, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.error import HTTPError
 import uuid
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -71,11 +73,19 @@ def parse_pairing(value):
     raw = base64.urlsafe_b64decode(key + "=" * (-len(key) % 4))
     if len(raw) != 32:
         raise ValueError("Invalid pairing key")
-    return {"url": url, "key": base64.urlsafe_b64encode(raw).decode().rstrip("=")}
+    config = {"url": url, "key": base64.urlsafe_b64encode(raw).decode().rstrip("=")}
+    invite = query.get("invite", [""])[0]
+    if invite:
+        if not re.fullmatch(r"[a-f0-9]{64}", invite):
+            raise ValueError("Invalid pairing invitation")
+        config["invite"] = invite
+    return config
 
 
 def pairing_link(config):
-    return "syncclip://pair?" + urlencode({"url": config["url"], "key": config["key"]})
+    return "syncclip://pair?" + urlencode(
+        {k: config[k] for k in ("url", "key", "invite") if config.get(k)}
+    )
 
 
 class Crypto:
@@ -224,13 +234,15 @@ class Crypto:
 def atomic_json(path, data):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    temp = path.with_suffix(".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as file:
-        json.dump(data, file)
-        file.flush()
-        os.fsync(file.fileno())
-    os.replace(temp, path)
+    fd, temp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as file:
+            json.dump(data, file)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temp, path)
+    finally:
+        Path(temp).unlink(missing_ok=True)
 
 
 class Store:
@@ -383,9 +395,31 @@ class Store:
             return json.loads(json.dumps(self.data))
 
 
+class DeviceDisconnected(ValueError):
+    pass
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class SyncClient:
-    def __init__(self, config, store, on_clip, on_status, on_history):
+    def __init__(
+        self,
+        config,
+        store,
+        on_clip,
+        on_status,
+        on_history,
+        on_config=None,
+        on_revoked=None,
+    ):
         self.config, self.store = config, store
+        self.on_config = on_config or (lambda: None)
+        self.on_revoked = on_revoked or (lambda: None)
+        self.device_lock = threading.RLock()
+        self.opener = build_opener(NoRedirect())
         self.crypto = Crypto(config["key"])
         self.on_clip, self.on_status, self.on_history = on_clip, on_status, on_history
         self.stopped = threading.Event()
@@ -395,6 +429,84 @@ class SyncClient:
         self.thread = threading.Thread(
             target=lambda: asyncio.run(self.run()), daemon=True
         )
+
+    @property
+    def authorization(self):
+        if not self.config.get("device_token"):
+            raise ValueError("Pair again using a new invitation")
+        return "Bearer " + self.config["device_token"]
+
+    def api(self, path, method="GET", data=None, authorization=None):
+        request = Request(
+            self.config["url"] + path,
+            method=method,
+            data=json.dumps(data).encode()
+            if data is not None
+            else (b"" if method == "POST" else None),
+            headers={
+                "Authorization": authorization or self.authorization,
+                "Content-Type": "application/json",
+            },
+        )
+        with self.opener.open(request, timeout=12) as response:
+            body = response.read(64 * 1024)
+            return json.loads(body) if body else {}
+
+    def ensure_device(self):
+        with self.device_lock:
+            if self.config.get("revoked"):
+                raise DeviceDisconnected(
+                    "Device disconnected. Pair again with a new invitation."
+                )
+            if not self.config.get("device_token"):
+                if not self.config.get("invite"):
+                    raise ValueError("Pair again using a new invitation")
+                self.config.update(
+                    device_id=str(uuid.uuid4()), device_token=os.urandom(32).hex()
+                )
+                self.on_config()
+            try:
+                result = self.api("/v1/devices")
+            except HTTPError as error:
+                if error.code != 401:
+                    raise
+                if self.config.get("enrolled"):
+                    raise DeviceDisconnected(
+                        "Device disconnected. Pair again with a new invitation."
+                    ) from None
+                if not self.config.get("invite"):
+                    raise ValueError("Pair again using a new invitation") from None
+                self.api(
+                    "/v1/enroll",
+                    "POST",
+                    {
+                        "id": self.config["device_id"],
+                        "token": self.config["device_token"],
+                        "name": self.config.get("device", "Linux")[:80],
+                        "platform": "linux",
+                    },
+                    "Bearer " + self.config["invite"],
+                )
+                result = self.api("/v1/devices")
+            changed = not self.config.get("enrolled") or "invite" in self.config
+            self.config["enrolled"] = True
+            self.config.pop("invite", None)
+            if changed:
+                self.on_config()
+            return result
+
+    def devices(self):
+        return self.ensure_device()
+
+    def invite(self):
+        self.ensure_device()
+        invitation = self.api("/v1/invitations", "POST")
+        return pairing_link(dict(self.config, invite=invitation["invite"]))
+
+    def disconnect_device(self, device_id):
+        if not re.fullmatch(r"[a-f0-9-]{36}", device_id):
+            raise ValueError("Invalid device")
+        self.api("/v1/devices/" + device_id, "DELETE")
 
     def start(self):
         self.thread.start()
@@ -408,6 +520,10 @@ class SyncClient:
                 self.loop.call_soon_threadsafe(self.wake.set)
 
     def send(self, text):
+        if self.config.get("revoked"):
+            raise DeviceDisconnected(
+                "Device disconnected. Pair again with a new invitation."
+            )
         clip = self.crypto.encrypt(text, self.config.get("device", "Linux"))
         self.store.queue(clip)
         if self.loop and self.wake:
@@ -415,6 +531,10 @@ class SyncClient:
         self.on_history()
 
     def send_image(self, data):
+        if self.config.get("revoked"):
+            raise DeviceDisconnected(
+                "Device disconnected. Pair again with a new invitation."
+            )
         clip, encrypted = self.crypto.encrypt_image(
             data, self.config.get("device", "Linux")
         )
@@ -425,6 +545,10 @@ class SyncClient:
         self.on_history()
 
     def send_file(self, path):
+        if self.config.get("revoked"):
+            raise DeviceDisconnected(
+                "Device disconnected. Pair again with a new invitation."
+            )
         path = Path(path)
         if not path.is_file():
             raise ValueError("Choose a file, not a folder")
@@ -467,12 +591,12 @@ class SyncClient:
             data=encrypted,
             method="PUT",
             headers={
-                "Authorization": self.crypto.authorization,
+                "Authorization": self.authorization,
                 "Content-Type": "application/octet-stream",
                 "X-Syncclip-Epoch": str(self.store.snapshot()["epoch"]),
             },
         )
-        with urlopen(request, timeout=45) as response:
+        with self.opener.open(request, timeout=45) as response:
             response.read(1024)
 
     def load_image(self, clip):
@@ -483,9 +607,9 @@ class SyncClient:
         else:
             request = Request(
                 self.config["url"] + "/v1/blobs/" + clip["id"],
-                headers={"Authorization": self.crypto.authorization},
+                headers={"Authorization": self.authorization},
             )
-            with urlopen(request, timeout=45) as response:
+            with self.opener.open(request, timeout=45) as response:
                 encrypted = response.read(MAX_FILE + 17)
             # Authenticate before caching an attachment received from the network.
             self.crypto.decrypt_attachment(clip, encrypted)
@@ -612,10 +736,11 @@ class SyncClient:
         while not self.stopped.is_set():
             self.on_status("Connecting…")
             try:
+                await asyncio.to_thread(self.ensure_device)
                 url = self.config["url"].replace("https://", "wss://", 1) + "/v1/ws"
                 async with websockets.connect(
                     url,
-                    extra_headers={"Authorization": self.crypto.authorization},
+                    extra_headers={"Authorization": self.authorization},
                     open_timeout=10,
                     ping_interval=25,
                     ping_timeout=30,
@@ -633,6 +758,23 @@ class SyncClient:
                         sender.cancel()
                         await asyncio.gather(sender, return_exceptions=True)
             except Exception as error:
+                if isinstance(error, DeviceDisconnected) or (
+                    isinstance(error, websockets.ConnectionClosed)
+                    and error.code == 4003
+                ):
+                    self.stopped.set()
+                    self.on_status(
+                        "Device disconnected. Pair again with a new invitation."
+                    )
+                    self.on_revoked()
+                    break
+                if isinstance(error, HTTPError) and error.code == 401:
+                    self.stopped.set()
+                    self.on_status(
+                        "Invitation expired or already used. Create a new one."
+                    )
+                    self.on_revoked()
+                    break
                 if (
                     isinstance(error, websockets.InvalidStatusCode)
                     and error.status_code == 401

@@ -5,16 +5,13 @@ import static dev.syncclip.NativeUi.*;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.StatusBarManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -70,7 +67,8 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
   @Override
   protected void onStart() {
     super.onStart();
-    if (builtPaired != app.store.paired() || !L.language(this).equals(builtLanguage)) build();
+    if (builtPaired != (app.store.paired() && app.store.hasDeviceToken())
+        || !L.language(this).equals(builtLanguage)) build();
     app.engine.observe(this);
     changed();
   }
@@ -114,7 +112,7 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
   }
 
   private void build() {
-    builtPaired = app.store.paired();
+    builtPaired = app.store.paired() && app.store.hasDeviceToken();
     builtLanguage = L.language(this);
     LinearLayout shell = new LinearLayout(this);
     shell.setOrientation(LinearLayout.VERTICAL);
@@ -149,7 +147,7 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
     status.setPadding(dp(18), 0, dp(18), dp(8));
     root.addView(status);
     space(root, 12);
-    if (!app.store.paired()) {
+    if (!app.store.paired() || !app.store.hasDeviceToken()) {
       buildPairing();
       return;
     }
@@ -195,7 +193,6 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
                         .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true),
                     21)));
     space(actions, 10);
-    actions.addView(button("Add quick settings shortcut", false, this::addTile));
     pending = text(L.tr(this, ""), 13, MUTED);
     actions.addView(pending);
     LinearLayout recent = new LinearLayout(this);
@@ -290,7 +287,10 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
       new AlertDialog.Builder(this)
           .setTitle(L.tr(this, "Replace this connection?"))
           .setMessage(
-              L.tr(this, "Local clip history will be cleared when you pair with this server."))
+              L.tr(
+                  this,
+                  "Pairing with a different group clears local history. Rejoining this group keeps"
+                      + " it."))
           .setPositiveButton(L.tr(this, "Connect"), (d, w) -> connect.run())
           .setNegativeButton(L.tr(this, "Cancel"), null)
           .show();
@@ -298,6 +298,7 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
   }
 
   private void startSync() {
+    if (!app.store.hasDeviceToken()) return;
     if (app.store.syncNotifications()
         && Build.VERSION.SDK_INT >= 33
         && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -356,6 +357,10 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
   }
 
   private void sendText(String text) {
+    if (!app.store.hasDeviceToken()) {
+      toast("Pair again using a new invitation");
+      return;
+    }
     try {
       if (!app.store.enabled()) {
         app.store.enabled(true);
@@ -432,7 +437,7 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
   }
 
   private void runDeferred() {
-    if (deferredAction == null || !app.store.paired()) return;
+    if (deferredAction == null || !app.store.paired() || !app.store.hasDeviceToken()) return;
     String action = deferredAction;
     deferredAction = null;
     if (action.equals("share-files") && !sharedFiles.isEmpty()) {
@@ -525,8 +530,12 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
 
   @Override
   public void changed() {
+    if (builtPaired != (app.store.paired() && app.store.hasDeviceToken())) {
+      build();
+      return;
+    }
     status.setText(L.tr(this, app.engine.status));
-    if (history == null || !app.store.paired()) return;
+    if (history == null || !app.store.paired() || !app.store.hasDeviceToken()) return;
     updating = true;
     enabled.setChecked(app.store.enabled());
     updating = false;
@@ -650,18 +659,6 @@ public final class MainActivity extends Activity implements SyncEngine.Observer 
     } catch (Exception e) {
       status.setText(L.tr(this, "Pairing could not be opened. Please pair again."));
     }
-  }
-
-  private void addTile() {
-    if (Build.VERSION.SDK_INT >= 33)
-      getSystemService(StatusBarManager.class)
-          .requestAddTileService(
-              new ComponentName(this, ClipboardTile.class),
-              "Send clipboard",
-              Icon.createWithResource(this, R.drawable.ic_syncclip),
-              getMainExecutor(),
-              result -> {});
-    else toast("Edit Quick Settings and add Send clipboard");
   }
 
   private void toast(String message) {

@@ -30,5 +30,5 @@ target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(text)
 print("Prepared", target.resolve(), "from", commit)
 print(
-    "Keep the repositories private until publication is approved. No F-Droid request was sent."
+    "No F-Droid request was sent. Verify anonymous source and APK downloads before submission."
 )

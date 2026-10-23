@@ -4,7 +4,6 @@
 import argparse
 import base64
 import hashlib
-import hmac
 import json
 import os
 from pathlib import Path
@@ -62,10 +61,11 @@ else:
     }
     validate(config)
     atomic_json(path, config)
-raw = validate(config)
-authorization = (
-    "Bearer " + hmac.new(raw, b"syncclip-auth-v1", hashlib.sha256).hexdigest()
-)
+validate(config)
+if not config.get("invite"):
+    config["invite"] = os.urandom(32).hex()
+    atomic_json(path, config)
+authorization = "Bearer " + config["invite"]
 for name, content in {
     "relay.env": "SYNC_TOKEN_SHA256="
     + hashlib.sha256(authorization.encode()).hexdigest()

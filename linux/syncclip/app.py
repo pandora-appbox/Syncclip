@@ -12,7 +12,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
 from .images import decode_rgba
 from .i18n import tr as _, fmt, size, set_language, LANGUAGES
@@ -22,7 +22,6 @@ from .core import (
     Store,
     SyncClient,
     atomic_json,
-    pairing_link,
     parse_pairing,
     safe_filename,
 )
@@ -227,7 +226,7 @@ class App(Gtk.Application):
         outer.pack_start(heading, False, False, 0)
         self.status_label = inset(label(_(self.status_text), "muted"))
         outer.pack_start(self.status_label, False, False, 0)
-        if not self.config:
+        if not self.config or self.config.get("revoked"):
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             card.get_style_context().add_class("card")
             card.set_border_width(16)
@@ -341,6 +340,9 @@ class App(Gtk.Application):
             pair = Gtk.Button(label=_("Pair another device"))
             pair.connect("clicked", lambda *_: self.show_pairing())
             box.pack_start(pair, False, False, 0)
+            devices = Gtk.Button(label=_("Connected devices"))
+            devices.connect("clicked", lambda *_: self.show_devices(dialog))
+            box.pack_start(devices, False, False, 0)
             clear = Gtk.Button(label=_("Clear shared history"))
             clear.connect("clicked", lambda *_: self.confirm_clear(parent=dialog))
             box.pack_start(clear, False, False, 0)
@@ -351,14 +353,97 @@ class App(Gtk.Application):
         clipboard.connect("clicked", lambda *_: self.clear_clipboard())
         box.pack_start(clipboard, False, False, 0)
         box.pack_start(
-            label(_("Syncclip 0.4.0 · End-to-end encrypted"), "muted"), False, False, 0
+            label(_("Syncclip 0.5.0 · End-to-end encrypted"), "muted"), False, False, 0
         )
+        support = Gtk.Button(label=_("Support development"))
+        support.connect("clicked", lambda *_: self.show_support(dialog))
+        box.pack_start(support, False, False, 0)
         dialog.show_all()
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.APPLY:
             self.build()
             GLib.idle_add(self.show_settings)
+
+    def show_support(self, parent=None):
+        data = json.loads(
+            (Path(__file__).parent / "resources/support.json").read_text()
+        )
+        dialog = Gtk.Dialog(
+            title=_("Support development"),
+            transient_for=parent or self.window,
+            modal=True,
+        )
+        dialog.add_button(_("Done"), Gtk.ResponseType.CLOSE)
+        dialog.set_default_size(480, 620)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        dialog.get_content_area().pack_start(scroll, True, True, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        content.set_margin_top(16)
+        content.set_margin_bottom(16)
+        scroll.add(content)
+        content.pack_start(
+            inset(label(_("Help keep Syncclip improving"), "title")), False, False, 0
+        )
+        content.pack_start(
+            inset(
+                label(
+                    _("Donations are optional. Thank you for supporting development."),
+                    "muted",
+                )
+            ),
+            False,
+            False,
+            0,
+        )
+        paypal = Gtk.LinkButton.new_with_label(data["paypal"], "PayPal ↗")
+        content.pack_start(inset(paypal), False, False, 0)
+        content.pack_start(
+            inset(
+                label(
+                    _(
+                        "Use only the asset and network shown. For Lightning, use a compatible wallet."
+                    ),
+                    "muted",
+                )
+            ),
+            False,
+            False,
+            0,
+        )
+        for destination in data["destinations"]:
+            section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            section.get_style_context().add_class("card")
+            row = Gtk.Box(spacing=8)
+            row.pack_start(
+                label(destination["asset"] + " · " + destination["network"]),
+                True,
+                True,
+                0,
+            )
+            copy = Gtk.Button.new_from_icon_name(
+                "edit-copy-symbolic", Gtk.IconSize.BUTTON
+            )
+            copy.set_tooltip_text(_("Copy address"))
+
+            def copy_address(button, address=destination["address"]):
+                self.clipboard.set_text(address, -1)
+                self.clipboard.store()
+                button.set_tooltip_text(_("Address copied"))
+
+            copy.connect("clicked", copy_address)
+            row.pack_end(copy, False, False, 0)
+            section.pack_start(inset(row), False, False, 0)
+            address = label(destination["address"], "muted")
+            address.set_selectable(True)
+            address.set_line_wrap_mode(Pango.WrapMode.CHAR)
+            address.set_max_width_chars(42)
+            section.pack_start(inset(address), False, False, 0)
+            content.pack_start(section, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
 
     def clear_clipboard(self):
         self.receive_generation += 1
@@ -526,8 +611,16 @@ class App(Gtk.Application):
 
     def pair(self, *_args):
         try:
+            parsed = parse_pairing(self.pair_entry.get_text())
+            if not parsed.get("invite"):
+                raise ValueError("Pair again using a new invitation")
+            if self.config and (
+                self.config.get("key") != parsed["key"]
+                or self.config.get("url") != parsed["url"]
+            ):
+                self.disconnect_local()
             self.config = dict(
-                parse_pairing(self.pair_entry.get_text()),
+                parsed,
                 device=socket.gethostname(),
                 auto=True,
             )
@@ -557,6 +650,8 @@ class App(Gtk.Application):
             lambda c, p: dispatch(self.receive, c, p),
             lambda s: dispatch(self.set_status, s),
             lambda: dispatch(self.refresh_history),
+            lambda: atomic_json(ROOT / "config.json", self.config),
+            lambda: dispatch(self.device_revoked),
         )
         self.client.start()
 
@@ -701,8 +796,13 @@ class App(Gtk.Application):
     def decode_image(data):
         raw, width, height = decode_rgba(data)
         return GdkPixbuf.Pixbuf.new_from_bytes(
-            GLib.Bytes.new(raw), GdkPixbuf.Colorspace.RGB, True, 8,
-            width, height, width * 4,
+            GLib.Bytes.new(raw),
+            GdkPixbuf.Colorspace.RGB,
+            True,
+            8,
+            width,
+            height,
+            width * 4,
         )
 
     def copy_image(self, clip, automatic=False):
@@ -951,35 +1051,73 @@ class App(Gtk.Application):
         box = dialog.get_content_area()
         box.set_spacing(12)
         box.set_border_width(20)
-        box.pack_start(
-            label(
-                _("Scan with Syncclip on Android, or paste the pairing link."), "muted"
-            ),
-            False,
-            False,
-            0,
-        )
-        uri = pairing_link(self.config)
-        try:
-            import subprocess
-            from gi.repository import GdkPixbuf
-
-            png = subprocess.check_output(
-                ["qrencode", "-t", "PNG", "-s", "6", "-m", "2"], input=uri.encode()
-            )
-            loader = GdkPixbuf.PixbufLoader.new_with_type("png")
-            loader.write(png)
-            loader.close()
-            box.pack_start(
-                Gtk.Image.new_from_pixbuf(loader.get_pixbuf()), False, False, 0
-            )
-        except Exception:
-            pass
+        instruction = label(_("Preparing a one-use pairing invitation…"), "muted")
+        instruction.set_max_width_chars(48)
+        instruction.set_width_chars(40)
+        box.pack_start(instruction, False, False, 0)
+        uri = ""
         entry = Gtk.Entry(text=uri, visibility=False, editable=False)
         box.pack_start(entry, False, False, 0)
         button = Gtk.Button(label=_("Copy pairing link"))
-        button.connect("clicked", lambda *_: self.copy_text(uri))
+        button.set_sensitive(False)
+        button.connect("clicked", lambda *_: self.copy_text(entry.get_text()))
         box.pack_start(button, False, False, 0)
+        alive = [True]
+        client = self.client
+
+        def prepare():
+            try:
+                link = client.invite()
+                try:
+                    import subprocess
+
+                    png = subprocess.check_output(
+                        ["qrencode", "-t", "PNG", "-o", "-", "-s", "5", "-m", "4"],
+                        input=link.encode(),
+                        stderr=subprocess.DEVNULL,
+                        timeout=8,
+                    )
+                    loader = GdkPixbuf.PixbufLoader.new_with_type("png")
+                    loader.write(png)
+                    loader.close()
+                    pixbuf = loader.get_pixbuf()
+                except Exception:
+                    pixbuf = None
+
+                def apply():
+                    if not alive[0]:
+                        return False
+                    entry.set_text(link)
+                    button.set_sensitive(True)
+                    if pixbuf is not None:
+                        image = Gtk.Image.new_from_pixbuf(pixbuf)
+                        box.pack_start(image, False, False, 0)
+                        box.reorder_child(image, 1)
+                        instruction.set_text(
+                            _(
+                                "On Android, tap Scan pairing code and scan this QR code. One use; expires in 10 minutes."
+                            )
+                        )
+                    else:
+                        instruction.set_text(
+                            _(
+                                "QR code unavailable. Copy this pairing link and paste it into Syncclip on your phone. One use; expires in 10 minutes."
+                            )
+                        )
+                    box.show_all()
+                    return False
+
+                GLib.idle_add(apply)
+            except Exception:
+                GLib.idle_add(
+                    lambda: instruction.set_text(
+                        _("Could not create an invitation. Reconnect and try again.")
+                    )
+                    if alive[0]
+                    else False
+                )
+
+        self.image_workers.submit(prepare)
         box.pack_start(
             label(
                 _("Keep this link private. It grants access to your shared clipboard."),
@@ -991,6 +1129,147 @@ class App(Gtk.Application):
         )
         dialog.show_all()
         dialog.run()
+        alive[0] = False
+        dialog.destroy()
+
+    def show_devices(self, parent=None):
+        dialog = Gtk.Dialog(
+            title=_("Connected devices"),
+            transient_for=parent or self.window,
+            modal=True,
+        )
+        dialog.add_button(_("Done"), Gtk.ResponseType.CLOSE)
+        dialog.set_default_size(460, 360)
+        box = dialog.get_content_area()
+        box.set_border_width(16)
+        box.set_spacing(10)
+        heading = label(_("Loading devices…"), "muted")
+        box.pack_start(heading, False, False, 0)
+        rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.pack_start(rows, True, True, 0)
+        alive = [True]
+        busy = [False]
+        client = self.client
+
+        def refresh():
+            if not alive[0]:
+                return False
+            if busy[0]:
+                return True
+            busy[0] = True
+
+            def work():
+                try:
+                    data = client.devices()
+
+                    def apply():
+                        busy[0] = False
+                        if not alive[0]:
+                            return False
+                        for child in rows.get_children():
+                            rows.remove(child)
+                        heading.set_text(
+                            _(
+                                "Disconnecting blocks future sync. Saved copies stay on the device."
+                            )
+                        )
+                        for device in data["devices"]:
+                            row = Gtk.Box(spacing=10)
+                            name = device["name"] + (
+                                " · " + _("This device")
+                                if device["id"] == data["self"]
+                                else ""
+                            )
+                            row.pack_start(
+                                label(
+                                    name
+                                    + "\n"
+                                    + (
+                                        _("Online")
+                                        if device["online"]
+                                        else _("Offline")
+                                    )
+                                ),
+                                True,
+                                True,
+                                0,
+                            )
+                            remove = Gtk.Button(label=_("Disconnect"))
+                            row.pack_end(remove, False, False, 0)
+
+                            def disconnect(_button, item=device):
+                                confirm = Gtk.MessageDialog(
+                                    transient_for=dialog,
+                                    modal=True,
+                                    message_type=Gtk.MessageType.QUESTION,
+                                    buttons=Gtk.ButtonsType.OK_CANCEL,
+                                    text=fmt("Disconnect %s?", item["name"]),
+                                )
+                                confirm.format_secondary_text(
+                                    _(
+                                        "A new pairing invitation will be required to reconnect. Existing invitations will expire immediately."
+                                    )
+                                )
+                                answer = confirm.run()
+                                confirm.destroy()
+                                if answer != Gtk.ResponseType.OK:
+                                    return
+
+                                def revoke():
+                                    try:
+                                        client.disconnect_device(item["id"])
+                                        if item["id"] == data["self"]:
+                                            GLib.idle_add(
+                                                lambda: (
+                                                    dialog.response(
+                                                        Gtk.ResponseType.CLOSE
+                                                    ),
+                                                    self.disconnect_local(),
+                                                    False,
+                                                )[-1]
+                                            )
+                                        else:
+                                            GLib.idle_add(refresh)
+                                    except Exception:
+                                        GLib.idle_add(
+                                            lambda: heading.set_text(
+                                                _(
+                                                    "Could not disconnect device. Reconnect and retry."
+                                                )
+                                            )
+                                            if alive[0]
+                                            else False
+                                        )
+
+                                self.image_workers.submit(revoke)
+
+                            remove.connect("clicked", disconnect)
+                            rows.pack_start(row, False, False, 0)
+                        rows.show_all()
+                        return False
+
+                    GLib.idle_add(apply)
+                except Exception:
+
+                    def failed():
+                        busy[0] = False
+                        if alive[0]:
+                            heading.set_text(
+                                _("Could not load devices. Reconnect and retry.")
+                            )
+                        return False
+
+                    GLib.idle_add(failed)
+
+            self.image_workers.submit(work)
+            return True
+
+        refresh()
+        timer = GLib.timeout_add_seconds(5, refresh)
+        dialog.show_all()
+        dialog.run()
+        alive[0] = False
+        GLib.source_remove(timer)
         dialog.destroy()
 
     def unpair(self, *_args):
@@ -1010,8 +1289,41 @@ class App(Gtk.Application):
         dialog.destroy()
         if result != Gtk.ResponseType.OK:
             return
+        if self.config.get("revoked"):
+            self.disconnect_local()
+            return
+        client = self.client
+
+        def revoke():
+            try:
+                client.disconnect_device(client.config["device_id"])
+                GLib.idle_add(self.disconnect_local)
+            except Exception:
+                GLib.idle_add(
+                    self.set_status, "Could not disconnect device. Reconnect and retry."
+                )
+
+        self.image_workers.submit(revoke)
+
+    def device_revoked(self):
+        if not self.config:
+            return False
+        self.config["revoked"] = True
+        self.config["auto"] = False
+        if self.client:
+            self.client.stop()
+        atomic_json(ROOT / "config.json", self.config)
+        self.status_text = "Device disconnected. Pair again with a new invitation."
+        self.build()
+        self.window.show_all()
+        return False
+
+    def disconnect_local(self):
+        if not self.config:
+            return False
         self.client_generation += 1
-        self.client.stop()
+        if self.client:
+            self.client.stop()
         self.client = None
         self.config = {}
         (ROOT / "config.json").unlink(missing_ok=True)

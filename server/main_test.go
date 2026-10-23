@@ -24,6 +24,11 @@ func setup(t *testing.T) (*Relay, *httptest.Server) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	r.accounts.Initialized = true
+	r.accounts.Devices["11111111-2222-4333-8444-555555555555"] = &Device{ID: "11111111-2222-4333-8444-555555555555", Name: "Test", Platform: "linux", TokenHash: authHash(testAuth)}
+	if err := r.saveAccounts(); err != nil {
+		t.Fatal(err)
+	}
 	s := httptest.NewServer(r.handler())
 	t.Cleanup(s.Close)
 	return r, s

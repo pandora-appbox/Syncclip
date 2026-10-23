@@ -30,6 +30,9 @@ func (r *Relay) cloneState() State {
 func (r *Relay) remove(p *peer, m Message) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if !r.peerActiveLocked(p) {
+		return
+	}
 	if !idPattern.MatchString(m.ID) {
 		r.enqueue(p, Message{Type: "error", Error: "Invalid clip ID"})
 		return

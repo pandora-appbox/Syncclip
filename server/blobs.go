@@ -15,8 +15,10 @@ const maxBlob = 32*1024*1024 + 16
 
 func (r *Relay) blobPath(id string) string { return filepath.Join(filepath.Dir(r.path), "images", id) }
 func (r *Relay) blobAuthorized(w http.ResponseWriter, req *http.Request) bool {
-	hash := sha256.Sum256([]byte(req.Header.Get("Authorization")))
-	if req.Header.Get("Origin") != "" || subtle.ConstantTimeCompare(hash[:], r.tokenHash) != 1 {
+	r.mu.Lock()
+	allowed := req.Header.Get("Origin") == "" && r.authorizeLocked(req) != nil
+	r.mu.Unlock()
+	if !allowed {
 		http.Error(w, "Unauthorized", 401)
 		return false
 	}
@@ -55,6 +57,10 @@ func (r *Relay) blobUpload(w http.ResponseWriter, req *http.Request) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.authorizeLocked(req) == nil {
+		http.Error(w, "Unauthorized", 401)
+		return
+	}
 	epoch := int64(0)
 	if value := req.Header.Get("X-Syncclip-Epoch"); value != "" {
 		var err error
@@ -117,6 +123,11 @@ func (r *Relay) blobDownload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	r.mu.Lock()
+	if r.authorizeLocked(req) == nil {
+		r.mu.Unlock()
+		http.Error(w, "Unauthorized", 401)
+		return
+	}
 	r.prune(time.Now())
 	allowed := false
 	for _, clip := range r.state.Clips {

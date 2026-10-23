@@ -1,5 +1,21 @@
 # Verification
 
+## 23 October 2026 — 0.5.0 device controls and Settings
+
+Pairing now displays a real QR code on Linux (`qrencode` writes its PNG to stdout), with a clear copy-link fallback when QR generation is unavailable. Invitations expire after ten minutes and can enroll one device only. A fresh server's provisioning invitation can enroll its first device only once.
+
+Settings on Linux and Android list registered devices and their online status. Each device has a separate random server credential; the relay persists only its hash. Disconnecting revokes that credential, closes its active WebSockets and invalidates outstanding invitations. Reconnection, device management and attachment access reject the removed credential. The shared encryption key cannot authorize relay access. Removing a device does not erase saved copies or rotate the group encryption key; rotate it separately if compromised.
+
+Android's quick settings shortcut action now lives in Settings. Both clients have a separate, voluntary support screen, using the same PayPal and six public cryptocurrency destinations as Aurum Meum, with network labels and accessible copy icons. There are no payment libraries or automatic payment requests. New wording is translated into English, French, Spanish and Russian.
+
+Validation: 16 Go tests with the race detector and `go vet`; 24 Python tests; signed Android release/debug/test builds and lint; 11 instrumentation tests on the connected Android phone. Tests include single-use enrollment under concurrency, persistence, failed-write rollback, remote revocation, rejected shared-key authentication, Android Keystore credential wrapping and decoding an actual Linux-generated pairing QR. Native GTK checks cover hidden startup/reopening, previews, Settings, QR/fallback, device list and support rendering. An isolated real-relay/Python integration passed encrypted text/image transfer, online status, revocation and restart persistence.
+
+The updated Docker relay is deployed behind the existing HTTPS proxy. Linux and the signed, non-debug Android release use independent enrolled credentials. A live Android UI test disconnected only a synthetic third device: its socket closed and reconnect was rejected, while the actual Linux and Android devices remained connected. Live TLS 1.2/1.3, authentication/origin/method/body-framing, exact maximum/chunked/oversized uploads and targeted synthetic cleanup passed. Existing shared clips were not cleared by these probes. Real camera scanning and long-duration vendor sleep behavior remain separate verification limits.
+
+The clean, keyless release rebuild reproduced the signed APK byte-for-byte and verified the existing update certificate. F-Droid lint with the official current configuration and its APK component scanner passed. Gitleaks found no leaks in the complete source or Git history; recursive inspection of all seven release payloads found none of the actual private credentials.
+
+GitHub publication was confirmed by the maintainer; GitHub Actions remains disabled. The Gitea mirror retains its existing visibility. F-Droid preparation does not submit a listing.
+
 ## 23 October 2026 — 0.4.2 release, licensing and Docker hosting
 
 Syncclip's own source is now MIT licensed. Original notices are retained for the exact five Linux runtime wheels, Android runtime dependencies and relay/Go runtime. All 139 resolved Maven runtime/build coordinates have license declarations, including inherited POM licenses and build-only exceptions; the patched HTTPS image also retains original notices for 160 compiled Go modules. THIRD_PARTY_NOTICES.md distinguishes application code, runtime libraries, external system packages and build tools. Dependency licenses were not replaced by MIT.

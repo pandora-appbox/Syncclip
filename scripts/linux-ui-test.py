@@ -15,7 +15,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk
 import syncclip.app as module
-from syncclip.core import Crypto, atomic_json
+from syncclip.core import Crypto, atomic_json, pairing_link
 
 with tempfile.TemporaryDirectory(prefix="syncclip-ui-regression-") as directory:
     module.ROOT = Path(directory)
@@ -51,6 +51,18 @@ with tempfile.TemporaryDirectory(prefix="syncclip-ui-regression-") as directory:
 
         def stop(self):
             pass
+
+        def invite(self):
+            return pairing_link(dict(config, invite="a" * 64))
+
+        def devices(self):
+            return {
+                "self": "desktop",
+                "devices": [
+                    {"id": "desktop", "name": "Linux desktop", "online": True},
+                    {"id": "phone", "name": "Android phone", "online": False},
+                ],
+            }
 
         def load_image(self, clip):
             return crypto.decrypt_attachment(
@@ -181,6 +193,78 @@ with tempfile.TemporaryDirectory(prefix="syncclip-ui-regression-") as directory:
 
     GLib.timeout_add(400, settings_frame)
     app.show_settings()
+    # Use synthetic pairing data, never the real group or the real clipboard.
+    from unittest import mock
+
+    def check_dialog(title, verify, filename):
+        errors = []
+        deadline = time.monotonic() + 8
+
+        def probe():
+            dialog = next(
+                (w for w in Gtk.Window.list_toplevels() if w.get_title() == title), None
+            )
+            if dialog is None:
+                return True
+            if not verify(dialog) and time.monotonic() < deadline:
+                return True
+            if not verify(dialog):
+                errors.append(title + " did not render")
+            frame = Gdk.pixbuf_get_from_window(
+                dialog.get_window(),
+                0,
+                0,
+                dialog.get_allocated_width(),
+                dialog.get_allocated_height(),
+            )
+            frame.savev(str(root / "artifacts" / filename), "png", [], [])
+            dialog.response(Gtk.ResponseType.CLOSE)
+            return False
+
+        GLib.timeout_add(100, probe)
+        return errors
+
+    errors = check_dialog(
+        "Pair your phone",
+        lambda d: any(
+            isinstance(w, Gtk.Image) and w.get_pixbuf() is not None for w in widgets(d)
+        ),
+        "linux-pairing-qr.png",
+    )
+    app.show_pairing()
+    assert not errors, errors
+    with mock.patch("subprocess.check_output", side_effect=FileNotFoundError()):
+        errors = check_dialog(
+            "Pair your phone",
+            lambda d: any(
+                isinstance(w, Gtk.Label)
+                and w.get_text().startswith("QR code unavailable.")
+                for w in widgets(d)
+            ),
+            "linux-pairing-fallback.png",
+        )
+        app.show_pairing()
+        assert not errors, errors
+    errors = check_dialog(
+        "Connected devices",
+        lambda d: any(
+            isinstance(w, Gtk.Label) and w.get_text().startswith("Android phone")
+            for w in widgets(d)
+        ),
+        "linux-connected-devices.png",
+    )
+    app.show_devices()
+    assert not errors, errors
+    errors = check_dialog(
+        "Support development",
+        lambda d: any(
+            isinstance(w, Gtk.Label) and w.get_text() == "pandora.appbox@cake.cash"
+            for w in widgets(d)
+        ),
+        "linux-support.png",
+    )
+    app.show_support()
+    assert not errors, errors
     selection = Gdk.Atom.intern("SYNCCLIP_PRIVATE_TEST_SELECTION", False)
     files = module.FileClipboard(selection)
     files.set_files([Path("/tmp/Syncclip archive.zip")])

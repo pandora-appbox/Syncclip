@@ -1,7 +1,7 @@
 name: syncclip
 services:
   relay:
-    image: syncclip-relay:0.4.2
+    image: syncclip-relay:0.5.0
     build:
       context: .
       dockerfile: deploy/Dockerfile
@@ -24,7 +24,7 @@ services:
       driver: json-file
       options: {max-size: "5m", max-file: "2"}
   https:
-    image: syncclip-https:0.4.2
+    image: syncclip-https:0.5.0
     build:
       context: .
       dockerfile: deploy/https/Dockerfile

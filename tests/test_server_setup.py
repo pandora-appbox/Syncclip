@@ -25,11 +25,14 @@ class ServerSetupTests(unittest.TestCase):
             subprocess.run(command, check=True, capture_output=True)
             config = parse_pairing((output / "pairing-link.txt").read_text())
             expected = hashlib.sha256(
-                Crypto(config["key"]).authorization.encode()
+                ("Bearer " + config["invite"]).encode()
             ).hexdigest()
             self.assertEqual(
                 (output / "relay.env").read_text(),
                 "SYNC_TOKEN_SHA256=" + expected + "\n",
+            )
+            self.assertNotEqual(
+                "Bearer " + config["invite"], Crypto(config["key"]).authorization
             )
             snapshot = (output / "pairing.json").read_bytes()
             subprocess.run(command, check=True, capture_output=True)

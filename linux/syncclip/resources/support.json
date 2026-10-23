@@ -1,0 +1,41 @@
+{
+  "paypal": "https://paypal.me/pandoraappbox",
+  "destinations": [
+    {
+      "id": "lightning",
+      "asset": "Bitcoin (BTC)",
+      "network": "Lightning",
+      "address": "pandora.appbox@cake.cash"
+    },
+    {
+      "id": "bitcoin",
+      "asset": "Bitcoin (BTC)",
+      "network": "Bitcoin (P2PKH)",
+      "address": "1FhQmcTPaw76dbdLj9XzXH6nJCwDpFnJV3"
+    },
+    {
+      "id": "tron",
+      "asset": "TRON (TRX)",
+      "network": "TRON",
+      "address": "TVX8ppaLmD7eU9u4DvVfBfjbNE2sthi224"
+    },
+    {
+      "id": "solana",
+      "asset": "Solana (SOL)",
+      "network": "Solana",
+      "address": "9bHyhcTuGfoppZvGhGjL5YN9XjAvyehLoJWPeMmpfxH1"
+    },
+    {
+      "id": "ethereum",
+      "asset": "Ethereum (ETH)",
+      "network": "Ethereum",
+      "address": "0xfd39A13504A5040b099C79893d328a3982b0c9E0"
+    },
+    {
+      "id": "monero",
+      "asset": "Monero (XMR)",
+      "network": "Monero",
+      "address": "47wNyY12pnYbmH32NmHCdJPqdWxAVchKj5YVciAWcxmq9uV3ywGRnxQ9k8D6m3Sj4zYia3DUpZ9qBJpa8d7QszZGGjpn1eT"
+    }
+  ]
+}
