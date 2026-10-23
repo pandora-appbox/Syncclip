@@ -201,5 +201,6 @@
   "Address copied": "Адрес скопирован",
   "Could not open link": "Не удалось открыть ссылку",
   "Shortcuts": "Быстрый доступ",
-  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Подключение к другой группе удалит локальную историю. Возврат в эту группу сохранит её."
+  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Подключение к другой группе удалит локальную историю. Возврат в эту группу сохранит её.",
+  "Syncclip 0.5.1 · End-to-end encrypted\nText, images and files up to 32 MB": "Syncclip 0.5.1 · Сквозное шифрование\nТекст, изображения и файлы до 32 МБ"
 }

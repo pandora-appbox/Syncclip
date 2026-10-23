@@ -29,7 +29,7 @@ Build and sign the upstream release from a clean Git checkout of the final relea
 Install `apksigcopier==1.1.1` in a temporary Python environment, then run from that environment:
 
 ```sh
-python scripts/check-reproducible-apk.py artifacts/Syncclip-0.5.0.apk
+python scripts/check-reproducible-apk.py artifacts/Syncclip-0.5.1.apk
 ```
 
 Use `--gradle /path/to/gradle-8.14.6/bin/gradle` to use an existing trusted Gradle installation, and `--sdk /path/to/Android/Sdk` if necessary. The command creates a clean Git checkout at `--ref` (default HEAD), excludes signing variables, compiles without the build cache, copies only the public APK signature, compares the complete files byte-for-byte and verifies the known signing certificate. The private signing key is not copied or used for the rebuild. Results and logs go under `artifacts/reproducibility/` and remain outside Git.

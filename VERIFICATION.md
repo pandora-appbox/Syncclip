@@ -1,5 +1,11 @@
 # Verification
 
+## 24 October 2026 — Android 0.5.1 scanner crash
+
+The physical phone's release crash log identified `NoClassDefFoundError: androidx.core.content.ContextCompat` in `CaptureManager.openCameraWithPermission`. ZXing's camera-permission helpers were absent from the release runtime. Android now explicitly includes AndroidX Core 1.17.0, compatible with the existing API 36 toolchain, including its transitive runtime dependencies. Linux and the relay remain at 0.5.0.
+
+The signed, non-debug Android APK was installed over the existing application. The real **Scan pairing code** button opened an active camera twice; cancelling each time returned to pairing in the same app process. No device was disconnected or paired by this probe. The reusable `scripts/scanner-live-test.py` tests the release application rather than relying on instrumentation's own AndroidX dependencies, which can mask a missing release dependency. The resolved 33-version runtime graph passed OSV checks; its POM license declarations and available original archive notices are bundled with the APK.
+
 ## 23 October 2026 — 0.5.0 device controls and Settings
 
 Pairing now displays a real QR code on Linux (`qrencode` writes its PNG to stdout), with a clear copy-link fallback when QR generation is unavailable. Invitations expire after ten minutes and can enroll one device only. A fresh server's provisioning invitation can enroll its first device only once.

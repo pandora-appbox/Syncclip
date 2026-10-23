@@ -8,7 +8,7 @@ Share **text, screenshots and files between Linux and Android** through a server
 
 ### Android
 
-[Download the APK](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.0/Syncclip-0.5.0.apk), open it, and allow installation when prompted. Requires Android 8 or newer. To update, install over the existing app.
+[Download the APK](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.1/Syncclip-0.5.1.apk), open it, and allow installation when prompted. Requires Android 8 or newer. To update, install over the existing app.
 
 ### Linux
 
@@ -22,7 +22,7 @@ Open **Syncclip** from your app menu. It stays in the tray and starts at login.
 
 **Other Linux desktops:** [download the installer archive](https://github.com/pandora-appbox/Syncclip/releases/download/v0.5.0/Syncclip-0.5.0-linux.tar.gz). See the expandable Linux instructions below for prerequisites and installation.
 
-[All downloads](https://github.com/pandora-appbox/Syncclip/releases/tag/v0.5.0) · [Gitea mirror](https://gitea.pandoraappbox.com/hal/Syncclip/releases).
+[All downloads](https://github.com/pandora-appbox/Syncclip/releases) · [Gitea mirror](https://gitea.pandoraappbox.com/hal/Syncclip/releases).
 
 ## Connect your devices
 

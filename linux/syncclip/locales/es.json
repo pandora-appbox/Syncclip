@@ -201,5 +201,6 @@
   "Address copied": "Dirección copiada",
   "Could not open link": "No se pudo abrir el enlace",
   "Shortcuts": "Accesos directos",
-  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Vincular otro grupo borra el historial local. Volver a este grupo lo conserva."
+  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Vincular otro grupo borra el historial local. Volver a este grupo lo conserva.",
+  "Syncclip 0.5.1 · End-to-end encrypted\nText, images and files up to 32 MB": "Syncclip 0.5.1 · Cifrado de extremo a extremo\nTexto, imágenes y archivos de hasta 32 MB"
 }

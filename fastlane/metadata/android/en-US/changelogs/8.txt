@@ -1,0 +1,1 @@
+Fix a crash when opening Scan pairing code. Include the camera-permission helpers required by the QR scanner.

@@ -274,7 +274,7 @@ public final class SettingsActivity extends Activity implements SyncEngine.Obser
             () -> startActivity(new Intent(this, SupportActivity.class))));
     body.addView(
         ui.text(
-            L.tr(this, "Syncclip 0.5.0 · End-to-end encrypted\nText, images and files up to 32 MB"),
+            L.tr(this, "Syncclip 0.5.1 · End-to-end encrypted\nText, images and files up to 32 MB"),
             13,
             MUTED));
   }

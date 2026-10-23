@@ -1,0 +1,1 @@
+Correction du plantage à l’ouverture du scanner de jumelage. Ajout des composants nécessaires à l’autorisation de la caméra.

@@ -1,0 +1,1 @@
+Corregido el cierre al abrir el escáner de vinculación. Se incluyen los componentes necesarios para el permiso de cámara.

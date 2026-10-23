@@ -201,5 +201,6 @@
   "Address copied": "Adresse copiée",
   "Could not open link": "Impossible d’ouvrir le lien",
   "Shortcuts": "Raccourcis",
-  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Un autre groupe efface l’historique local. Rejoindre ce groupe le conserve."
+  "Pairing with a different group clears local history. Rejoining this group keeps it.": "Un autre groupe efface l’historique local. Rejoindre ce groupe le conserve.",
+  "Syncclip 0.5.1 · End-to-end encrypted\nText, images and files up to 32 MB": "Syncclip 0.5.1 · Chiffré de bout en bout\nTexte, images et fichiers jusqu’à 32 Mo"
 }

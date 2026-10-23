@@ -1,6 +1,6 @@
 # Third-party software
 
-Syncclip's original code is [MIT licensed](LICENSE). Dependencies retain their own licenses and copyrights; MIT does not replace them. Reviewed for release 0.4.2 on 23 October 2026 using the exact runtime wheels, Maven POMs and embedded archive notices.
+Syncclip's original code is [MIT licensed](LICENSE). Dependencies retain their own licenses and copyrights; MIT does not replace them. Android runtime updated for release 0.5.1 on 24 October 2026; original inventory reviewed on 23 October 2026 using the exact runtime wheels, Maven POMs and embedded archive notices.
 
 ## Distributed runtime components
 
@@ -10,8 +10,10 @@ Syncclip's original code is [MIT licensed](LICENSE). Dependencies retain their o
 | Go runtime (relay executable) | 1.27.3 | BSD-3-Clause | [notice](licenses/Go.txt) |
 | OkHttp | 4.12.0 | Apache-2.0 | [license](licenses/android/okhttp-LICENSE.txt) |
 | Okio / Okio JVM | 3.6.0 | Apache-2.0 | [license](licenses/android/okio-LICENSE.txt) |
-| Kotlin standard library, common, JDK7/JDK8 adapters | 1.9.10 | Apache-2.0 | [license](licenses/android/kotlin-LICENSE.txt) |
-| JetBrains annotations | 13.0 | Apache-2.0 | [text](licenses/Apache-2.0.txt) |
+| Kotlin standard library / JDK7/JDK8 adapters | 2.0.21 / 1.9.10 | Apache-2.0 | [license](licenses/android/kotlin-LICENSE.txt) |
+| JetBrains annotations | 23.0.0 | Apache-2.0 | [text](licenses/Apache-2.0.txt) |
+| AndroidX Core and transitive AndroidX libraries | Core 1.17.0; exact versions in inventory | Apache-2.0 | [POMs and original notices](licenses/android/) |
+| Kotlin coroutines, Guava listenablefuture and JSpecify | Exact versions in inventory | Apache-2.0 | [POMs and original notices](licenses/android/) |
 | ZXing Android Embedded | 4.3.0 | Apache-2.0 | [COPYING](licenses/android/zxing-embedded-COPYING.txt) |
 | ZXing core | 3.4.1 | Apache-2.0 | [NOTICE](licenses/android/zxing-NOTICE.txt), [text](licenses/Apache-2.0.txt) |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | [original licenses](licenses/python/cryptography/) |
@@ -27,7 +29,7 @@ The Linux release ships the exact upstream wheel license files, including Pillow
 
 ## Build tools and server images
 
-The [exact Maven inventory](licenses/dependency-inventory.json) covers 139 resolved runtime/build coordinates, including inherited POM licenses and primary-source URLs. All 11 runtime coordinates are Apache-2.0. Build-only dependencies also include BSD, MIT, JDOM, MPL-1.1 and CDDL/GPL-with-Classpath-exception choices; JNA is Apache-2.0 OR LGPL-2.1. These build-only libraries are not included in the release APK. They do not change the license of Syncclip's source. Instrumentation dependencies are test-only and are not shipped in the release APK (AndroidX/JUnit/Hamcrest retain their upstream licenses).
+The [exact Maven inventory](licenses/dependency-inventory.json) covers 164 current and previously resolved runtime/build coordinates, including inherited POM licenses and primary-source URLs. The 33 current Android runtime coordinates declare Apache-2.0; superseded runtime versions are marked previous-runtime. Build-only dependencies also include BSD, MIT, JDOM, MPL-1.1 and CDDL/GPL-with-Classpath-exception choices; JNA is Apache-2.0 OR LGPL-2.1. These build-only libraries are not included in the release APK. They do not change the license of Syncclip's source. Instrumentation dependencies are test-only and are not shipped in the release APK (AndroidX/JUnit/Hamcrest retain their upstream licenses).
 
 Gradle 8.14.6 and AGP 8.13.1 use Apache-2.0; the wrapper JAR is redistributed under that license. JDK 17 uses GPL-2.0 with the Classpath exception; the JDK is not bundled. Android SDK/platform tools have separate Google terms and are not bundled. GitHub Actions are remote CI tools, not application dependencies.
 
