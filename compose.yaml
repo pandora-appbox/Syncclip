@@ -1,0 +1,55 @@
+name: syncclip
+services:
+  relay:
+    image: syncclip-relay:0.4.2
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 192m
+    cpus: 1.0
+    environment:
+      SYNC_LISTEN: 0.0.0.0:8787
+      SYNC_STATE: /var/lib/syncclip/state.json
+    env_file: ./private/relay.env
+    ports: ["127.0.0.1:8787:8787"]
+    volumes:
+      - ${SYNC_DATA_DIR:-syncclip-data}:/var/lib/syncclip
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+  https:
+    image: syncclip-https:0.4.2
+    build:
+      context: .
+      dockerfile: deploy/https/Dockerfile
+    profiles: [public]
+    restart: unless-stopped
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    pids_limit: 64
+    mem_limit: 128m
+    environment:
+      SYNC_DOMAIN: ${SYNC_DOMAIN:-localhost}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      relay:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+volumes:
+  syncclip-data:
+  caddy-data:
+  caddy-config:

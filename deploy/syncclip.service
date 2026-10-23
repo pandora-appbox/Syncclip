@@ -1,0 +1,32 @@
+[Unit]
+Description=Syncclip encrypted clipboard relay
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+ExecStart=/opt/syncclip/syncclip-server
+EnvironmentFile=/etc/syncclip/relay.env
+Environment=SYNC_LISTEN=127.0.0.1:8787
+Environment=SYNC_STATE=/var/lib/syncclip/state.json
+StateDirectory=syncclip
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryMax=192M
+TasksMax=64
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

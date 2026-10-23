@@ -1,0 +1,16 @@
+**
+!server/
+!server/**
+!deploy/
+!deploy/Dockerfile
+!deploy/Dockerfile.binary
+!LICENSE
+!licenses/
+!licenses/Go.txt
+!licenses/gorilla-websocket.txt
+!artifacts/
+!artifacts/syncclip-server
+!deploy/empty-state/
+!deploy/empty-state/**
+!deploy/https/
+!deploy/https/**

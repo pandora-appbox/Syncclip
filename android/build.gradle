@@ -1,0 +1,23 @@
+// Security updates for AGP's build-time libraries; app runtime dependencies are separate.
+buildscript {
+    configurations.classpath {
+        resolutionStrategy.eachDependency { details ->
+            def dep = details.requested
+            if (dep.group == 'io.netty' && !dep.name.startsWith('netty-tcnative')) {
+                details.useVersion '4.1.139.Final'
+            } else if (dep.group == 'org.bouncycastle' && dep.name.endsWith('-jdk18on')) {
+                details.useVersion '1.86'
+            } else if (dep.group == 'org.apache.commons' && dep.name == 'commons-compress') {
+                details.useVersion '1.28.0'
+            } else if (dep.group == 'org.bitbucket.b_c' && dep.name == 'jose4j') {
+                details.useVersion '0.9.7'
+            } else if (dep.group == 'org.jdom' && dep.name == 'jdom2') {
+                details.useVersion '2.0.6.1'
+            }
+        }
+    }
+}
+
+plugins {
+    id 'com.android.application' version '8.13.1' apply false
+}

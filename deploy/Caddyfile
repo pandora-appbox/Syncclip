@@ -1,0 +1,20 @@
+{
+    servers {
+        protocols h1 h2
+        timeouts {
+            read_header 10s
+            read_body 90s
+            idle 90s
+        }
+    }
+}
+{$SYNC_DOMAIN} {
+    # No access log: authorization and clipboard endpoints stay out of request logs.
+    handle_path /syncclip/* {
+        request_body {
+            max_size 33MiB
+        }
+        reverse_proxy relay:8787
+    }
+    respond 404
+}

@@ -1,0 +1,17 @@
+.idea/
+.gradle/
+**/build/
+**/__pycache__/
+*.pyc
+.venv/
+.env
+*.env
+!*.env.example
+local.properties
+artifacts/*
+!artifacts/.gitkeep
+private/
+*.jks
+*.keystore
+server/syncclip-server
+state.json
