@@ -57,6 +57,7 @@ Icon=$install_root/syncclip/assets/syncclip.svg
 Terminal=false
 Categories=Utility;
 StartupNotify=true
+StartupWMClass=Syncclip
 DESKTOP
 cat > "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/syncclip.desktop" <<DESKTOP
 [Desktop Entry]
@@ -66,5 +67,6 @@ Exec=$HOME/.local/bin/syncclip --background
 Icon=$install_root/syncclip/assets/syncclip.svg
 Terminal=false
 X-GNOME-Autostart-enabled=true
+StartupWMClass=Syncclip
 DESKTOP
 echo 'Installed Syncclip in the application menu, with login autostart.'

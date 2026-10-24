@@ -103,6 +103,7 @@ Icon=syncclip
 Terminal=false
 Categories=Utility;
 StartupNotify=true
+StartupWMClass=Syncclip
 """)
     icon = package / "usr/share/icons/hicolor/scalable/apps/syncclip.svg"
     icon.parent.mkdir(parents=True)

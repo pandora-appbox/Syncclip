@@ -95,6 +95,10 @@ class FileClipboard:
 
 class App(Gtk.Application):
     def __init__(self, background=False):
+        # Desktop shells otherwise identify the Python module as App.py.
+        GLib.set_prgname("syncclip")
+        GLib.set_application_name("Syncclip")
+        Gdk.set_program_class("Syncclip")
         super().__init__(
             application_id="dev.syncclip.Linux", flags=Gio.ApplicationFlags.FLAGS_NONE
         )
